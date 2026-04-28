@@ -44,6 +44,7 @@ type ApplicationRecord = {
   id: string;
   company: string;
   role: string;
+  industry: string;
   applicationType: ApplicationType;
   location: string;
   appliedDate: string;
@@ -128,6 +129,7 @@ const usernameStorageKey = "job_username";
 const statuses: ApplicationStatus[] = ["准备投递", "已投递", "待跟进", "面试中", "Offer", "已拒"];
 const applicationTypeFilters: ApplicationTypeFilter[] = ["全部", "校招", "暑期实习"];
 const applicationTypes: ApplicationType[] = ["校招", "暑期实习"];
+const industries = ["金融", "互联网", "咨询", "快消", "科技", "国企/央企", "教育", "医疗健康", "其他"];
 const encouragementMessages = [
   "今天也会有好消息",
   "今天继续向offer靠近",
@@ -156,6 +158,7 @@ const emotionCheckins: { emotion: Emotion; emoji: string; label: string }[] = [
 const emptyForm: ApplicationFormState = {
   company: "",
   role: "",
+  industry: "",
   applicationType: "校招",
   location: "",
   appliedDate: new Date().toISOString().slice(0, 10),
@@ -209,13 +212,14 @@ const seedApplications: ApplicationRecord[] = [
     id: "seed-1",
     company: "AstraFin",
     role: "Junior Data Analyst",
+    industry: "金融",
     applicationType: "校招",
     location: "Singapore",
     appliedDate: "2026-04-18",
     status: "面试中",
     jd: "负责业务数据分析、指标看板维护、用户留存与转化分析，支持产品和运营团队做决策。",
     resumeVersionId: "resume-data",
-    interviewTime: "2026-04-30 14:00",
+    interviewTime: "2026-04-30",
     contact: "Janel Tan",
     channel: "LinkedIn",
     notes: "准备用户留存分析案例，补充 SQL 项目经历。",
@@ -240,6 +244,7 @@ const seedApplications: ApplicationRecord[] = [
     id: "seed-2",
     company: "Nimbus AI",
     role: "Product Associate",
+    industry: "互联网",
     applicationType: "暑期实习",
     location: "Remote",
     appliedDate: "2026-04-16",
@@ -268,13 +273,14 @@ const seedApplications: ApplicationRecord[] = [
     id: "seed-3",
     company: "BrightPath",
     role: "Business Analyst",
+    industry: "咨询",
     applicationType: "校招",
     location: "Jakarta",
     appliedDate: "2026-04-09",
     status: "Offer",
     jd: "负责市场研究、业务建模、增长策略分析，与销售和产品团队协作推动商业项目。",
     resumeVersionId: "resume-data",
-    interviewTime: "已完成",
+    interviewTime: "",
     contact: "Marcus Lee",
     channel: "内推",
     notes: "评估薪酬、成长路径和团队稳定性。",
@@ -287,13 +293,14 @@ const seedApplications: ApplicationRecord[] = [
     id: "seed-4",
     company: "BlueOrbit",
     role: "Strategy Intern",
+    industry: "金融",
     applicationType: "暑期实习",
     location: "Bangkok",
     appliedDate: "2026-03-29",
     status: "已拒",
     jd: "支持战略项目，进行市场规模测算、竞品研究和管理层汇报材料准备。",
     resumeVersionId: "resume-general",
-    interviewTime: "已完成",
+    interviewTime: "",
     contact: "Amy Wong",
     channel: "校园招聘",
     notes: "复盘：市场规模测算结构需要更清晰。",
@@ -330,6 +337,7 @@ const bottomNavItems: NavItem[] = [
 const applicationTableColumns = [
   { label: "公司", className: "sticky left-0 z-20 min-w-[180px] bg-slate-50" },
   { label: "岗位", className: "sticky left-[180px] z-20 min-w-[160px] bg-slate-50 shadow-[8px_0_12px_-12px_rgba(15,23,42,0.35)]" },
+  { label: "行业", className: "min-w-[120px]" },
   { label: "类型", className: "min-w-[120px]" },
   { label: "优先级", className: "min-w-[120px]" },
   { label: "Base", className: "min-w-[140px]" },
@@ -363,6 +371,7 @@ function normalizeApplications(items: Partial<ApplicationRecord>[]) {
       id: item.id ?? createId(),
       company: item.company ?? "",
       role: item.role ?? "",
+      industry: item.industry ?? "",
       applicationType: item.applicationType ?? "校招",
       location: item.location ?? "",
       appliedDate: item.appliedDate ?? getLocalDate(),
@@ -452,6 +461,10 @@ function formatFileSize(size: number) {
   if (!size) return "";
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function normalizeDateInput(value?: string) {
+  return value?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
 }
 
 function inferResumeVersionId(value?: string) {
@@ -773,6 +786,7 @@ export default function Home() {
       [
         item.company,
         item.role,
+        item.industry,
         item.location,
         item.status,
         item.channel,
@@ -828,6 +842,7 @@ export default function Home() {
     setForm({
       company: record.company,
       role: record.role,
+      industry: record.industry,
       applicationType: record.applicationType,
       location: record.location,
       appliedDate: record.appliedDate,
@@ -835,7 +850,7 @@ export default function Home() {
       jd: record.jd,
       resumeVersionId: record.resumeVersionId || inferResumeVersionId(record.resumeVersion),
       resumeVersion: record.resumeVersion ?? "",
-      interviewTime: record.interviewTime,
+      interviewTime: normalizeDateInput(record.interviewTime),
       contact: record.contact,
       channel: record.channel,
       notes: record.notes,
@@ -1166,9 +1181,6 @@ export default function Home() {
               {item.label}
             </button>
           ))}
-          <p className="px-3 text-xs text-slate-500">
-          可上线 MVP · 本地优先
-          </p>
         </div>
       </aside>
 
@@ -1516,7 +1528,7 @@ export default function Home() {
                     <CardDescription>可以查看详情、编辑、删除，也可以直接修改状态。</CardDescription>
                   </CardHeader>
                   <CardContent className="w-full overflow-x-auto pb-4 [scrollbar-color:#cbd5e1_transparent] [scrollbar-width:thin]">
-                    <table className="w-full min-w-[1900px] border-separate border-spacing-0 text-left text-sm">
+                    <table className="w-full min-w-[2040px] border-separate border-spacing-0 text-left text-sm">
                       <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                         <tr>
                           {applicationTableColumns.map((column) => (
@@ -1534,6 +1546,7 @@ export default function Home() {
                           <tr key={item.id} className="group align-top hover:bg-slate-50">
                             <td className="sticky left-0 z-10 min-w-[180px] whitespace-nowrap border-b border-slate-100 bg-white px-4 py-3 text-sm font-medium text-slate-950 group-hover:bg-slate-50">{item.company}</td>
                             <td className="sticky left-[180px] z-10 min-w-[160px] whitespace-nowrap border-b border-slate-100 bg-white px-4 py-3 text-sm shadow-[8px_0_12px_-12px_rgba(15,23,42,0.35)] group-hover:bg-slate-50">{item.role}</td>
+                            <td className="min-w-[120px] whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm text-slate-600">{item.industry || "-"}</td>
                             <td className="min-w-[120px] whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm">
                               <Badge variant={item.applicationType === "暑期实习" ? "warning" : "soft"}>{item.applicationType}</Badge>
                             </td>
@@ -2015,12 +2028,16 @@ export default function Home() {
                 <p className="text-xs text-slate-500">投递日期</p>
                 <p className="mt-2 text-sm font-medium">{selectedApplication.appliedDate}</p>
               </div>
-              <div className="rounded-xl border border-slate-200 p-3">
-                <p className="text-xs text-slate-500">Base 地</p>
-                <p className="mt-2 text-sm font-medium">{selectedApplication.location || "-"}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 p-3">
-                <p className="text-xs text-slate-500">投递渠道</p>
+	              <div className="rounded-xl border border-slate-200 p-3">
+	                <p className="text-xs text-slate-500">Base 地</p>
+	                <p className="mt-2 text-sm font-medium">{selectedApplication.location || "-"}</p>
+	              </div>
+	              <div className="rounded-xl border border-slate-200 p-3">
+	                <p className="text-xs text-slate-500">行业类型</p>
+	                <p className="mt-2 text-sm font-medium">{selectedApplication.industry || "-"}</p>
+	              </div>
+	              <div className="rounded-xl border border-slate-200 p-3">
+	                <p className="text-xs text-slate-500">投递渠道</p>
                 <p className="mt-2 text-sm font-medium">{selectedApplication.channel || "-"}</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
@@ -2271,12 +2288,24 @@ export default function Home() {
               <Field label="公司名称 *">
                 <Input value={form.company} onChange={(event) => setForm({ ...form, company: event.target.value })} placeholder="例如：AstraFin" />
               </Field>
-              <Field label="岗位名称 *">
-                <Input value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} placeholder="例如：Product Manager Intern" />
-              </Field>
-              <Field label="Base 地">
-                <Input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="例如：上海 / Remote" />
-              </Field>
+	              <Field label="岗位名称 *">
+	                <Input value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} placeholder="例如：Product Manager Intern" />
+	              </Field>
+	              <Field label="行业类型">
+	                <select
+	                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+	                  value={form.industry}
+	                  onChange={(event) => setForm({ ...form, industry: event.target.value })}
+	                >
+	                  <option value="">请选择行业</option>
+	                  {industries.map((industry) => (
+	                    <option key={industry} value={industry}>{industry}</option>
+	                  ))}
+	                </select>
+	              </Field>
+	              <Field label="Base 地">
+	                <Input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="例如：上海 / Remote" />
+	              </Field>
               <Field label="投递日期">
                 <Input type="date" value={form.appliedDate} onChange={(event) => setForm({ ...form, appliedDate: event.target.value })} />
               </Field>
@@ -2511,9 +2540,9 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              <Field label="面试时间">
-                <Input value={form.interviewTime} onChange={(event) => setForm({ ...form, interviewTime: event.target.value })} placeholder="例如：2026-05-06 14:00" />
-              </Field>
+	              <Field label="面试时间">
+	                <Input type="date" value={form.interviewTime} onChange={(event) => setForm({ ...form, interviewTime: event.target.value })} />
+	              </Field>
               <Field label="联系人">
                 <Input value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} placeholder="招聘负责人 / 内推人" />
               </Field>
