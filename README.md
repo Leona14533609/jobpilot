@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JobPilot
 
-## Getting Started
+JobPilot 是一个面向商科同学的求职投递记录管理工具，用来整理投递记录、简历版本、暑期实习信息、面试复盘、岗位优先级和情绪状态。
 
-First, run the development server:
+当前版本是可上线的本地优先 MVP：
+
+- 不需要账号
+- 不接后端
+- 不接 AI API
+- 数据保存在本地浏览器，清除缓存会丢失
+
+## 核心功能
+
+- 投递记录管理：新增、编辑、删除、查看详情、修改状态
+- 表格视图和 Kanban 看板视图
+- 暑期实习字段：转正机会、信息来源、可信度、实习周期、投入程度
+- 简历版本管理和投递绑定
+- 面试记录和复盘
+- 岗位优先级评分
+- 情绪管理
+- 关于作者和小红书咨询入口
+
+## 本地运行
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开终端显示的本地预览地址即可查看。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 上线前检查
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+## 部署到 Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. 将项目推送到 GitHub。
+2. 打开 Vercel，点击 New Project。
+3. 选择 JobPilot 仓库。
+4. Framework Preset 选择 Next.js。
+5. Build Command 使用 `npm run build`。
+6. 点击 Deploy。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+当前版本不需要配置环境变量。
