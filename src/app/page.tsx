@@ -18,18 +18,6 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -141,7 +129,7 @@ const applicationTypeFilters: ApplicationTypeFilter[] = ["全部", "校招", "�
 const applicationTypes: ApplicationType[] = ["校招", "暑期实习"];
 const industries = ["金融", "互联网", "咨询", "快消", "科技", "国企/央企", "教育", "医疗健康", "其他"];
 const encouragementMessages = [
-  "今天也会有好消息",
+  "今天一定有Offer",
   "今天继续向offer靠近",
   "慢一点也没关系",
   "今天先推进一小步",
@@ -331,6 +319,7 @@ const seedApplications: ApplicationRecord[] = [
 ];
 
 type NavItem = { key: ViewKey; label: string; icon: React.ComponentType<{ className?: string }> };
+type ChartDatum = { label: string; value: number; color?: string };
 
 const navItems: NavItem[] = [
   { key: "dashboard", label: "首页总览", icon: LayoutDashboard },
@@ -360,6 +349,129 @@ const applicationTableColumns = [
   { label: "渠道", className: "min-w-[140px]" },
   { label: "操作", className: "min-w-[140px]" },
 ];
+const statusChartColors: Record<ApplicationStatus, string> = {
+  准备投递: "#64748b",
+  已投递: "#60a5fa",
+  待跟进: "#fbbf24",
+  面试中: "#a78bfa",
+  Offer: "#34d399",
+  已拒: "#fb7185",
+};
+const chartPalette = ["#64748b", "#60a5fa", "#34d399", "#fbbf24", "#a78bfa", "#fb7185"];
+
+function buildDistribution<T>(items: T[], getLabel: (item: T) => string) {
+  const counts = new Map<string, number>();
+  items.forEach((item) => {
+    const label = getLabel(item).trim();
+    if (!label) return;
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  });
+  return [...counts.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function DonutChart({ data }: { data: ChartDatum[] }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const radius = 44;
+  const circumference = 2 * Math.PI * radius;
+  const segments = data.reduce<{ item: ChartDatum; segment: number; offset: number }[]>((acc, item) => {
+    const previousOffset = acc.reduce((sum, segment) => sum + segment.segment, 0);
+    return [
+      ...acc,
+      {
+        item,
+        segment: total === 0 ? 0 : (item.value / total) * circumference,
+        offset: previousOffset,
+      },
+    ];
+  }, []);
+
+  if (total === 0) {
+    return (
+      <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-300 text-sm text-slate-500">
+        暂无投递数据
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 md:grid-cols-[220px_1fr] md:items-center">
+      <div className="relative mx-auto h-52 w-52">
+        <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+          <circle cx="60" cy="60" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="14" />
+          {segments.map(({ item, segment, offset }) => {
+            if (item.value === 0) return null;
+            return (
+              <circle
+                key={item.label}
+                cx="60"
+                cy="60"
+                r={radius}
+                fill="none"
+                stroke={item.color ?? "#64748b"}
+                strokeDasharray={`${segment} ${circumference - segment}`}
+                strokeDashoffset={-offset}
+                strokeLinecap="round"
+                strokeWidth="14"
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <p className="text-3xl font-semibold text-slate-950">{total}</p>
+          <p className="mt-1 text-xs text-slate-500">总投递</p>
+        </div>
+      </div>
+      <div className="grid gap-2">
+        {data.map((item) => (
+          <div key={item.label} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+            <span className="flex items-center gap-2 text-sm text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color ?? "#64748b" }} />
+              {item.label}
+            </span>
+            <span className="text-sm font-medium text-slate-950">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BarList({ data, emptyText }: { data: ChartDatum[]; emptyText: string }) {
+  const visibleData = data.filter((item) => item.value > 0);
+  const maxValue = Math.max(...visibleData.map((item) => item.value), 0);
+
+  if (visibleData.length === 0) {
+    return (
+      <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-300 px-6 text-center text-sm text-slate-500">
+        {emptyText}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {visibleData.map((item, index) => (
+        <div key={item.label} className="space-y-2">
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="truncate text-slate-700">{item.label}</span>
+            <span className="font-medium text-slate-950">{item.value}</span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full"
+              style={{
+                backgroundColor: item.color ?? chartPalette[index % chartPalette.length],
+                width: `${Math.max((item.value / maxValue) * 100, 8)}%`,
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function loadApplications() {
   if (typeof window === "undefined") return [];
@@ -477,6 +589,15 @@ function normalizeDateInput(value?: string) {
   return value?.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
 }
 
+function hasInterviewReview(interview: InterviewRecord) {
+  return Boolean(
+    interview.questions.trim() ||
+      interview.summary.trim() ||
+      interview.nextAction.trim() ||
+      interview.score,
+  );
+}
+
 function inferResumeVersionId(value?: string) {
   if (!value) return "resume-general";
   const normalized = value.toLowerCase();
@@ -589,32 +710,34 @@ function AboutAuthor() {
     <>
       <PageHeader title="关于作者" />
 
-      <div className="mx-auto max-w-4xl space-y-10">
-        <Card>
-          <CardHeader>
-            <CardTitle>为什么做这个工具</CardTitle>
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-stretch gap-8 lg:grid-cols-2">
+        <Card className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <CardHeader className="p-0">
+            <CardTitle className="mb-4 text-xl font-semibold">为什么做这个工具</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6 text-sm leading-9 text-slate-700">
+          <CardContent className="space-y-4 p-0 text-sm leading-relaxed text-slate-600">
             <p>这个工具是我在复盘自己暑期实习和春秋招经历时做的。</p>
             <p>
-              当时投了很多岗位但一直在零散记录， 一直缺乏一种“掌控感”。
+              当时投了很多岗位但一直在零散记录，一直缺乏一种“掌控感”。
             </p>
             <p>
-              不知道哪些需要跟进， 也不确定哪些岗位值得继续投入时间，也很难记录自己投递和当下面试完的状态和情绪。
+              不知道哪些需要跟进，也不确定哪些岗位值得继续投入时间，也很难记录自己投递和当下面试完的状态和情绪。
+            </p>
+            <p>
+              整个过程走完之后才发现，如果一开始就把这些信息记录得更清楚、结构更清晰，其实很多焦虑是可以避免的，所以就有了这个工具。
+            </p>
+            <p>
+              本人非绩优主义宣传者，初衷是希望大家能够在少有确定性的市场中保持高配得感，通过数据看到自己的进展，少受一些带节奏的话术的影响，keep real并保持自己的节奏。
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>理念 + 咨询入口</CardTitle>
+        <Card className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <CardHeader className="p-0">
+            <CardTitle className="mb-4 text-xl font-semibold">写在最后</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-7 text-sm leading-9 text-slate-700">
-            <p>
-              本人非绩优主义宣传者， 初衷是希望大家能够在少有确定性的市场中保持高配得感，通过数据看到自己的进展，少受一些带节奏的话术的影响，keep real并保持自己的节奏。
-            </p>
+          <CardContent className="space-y-4 p-0 text-sm leading-relaxed text-slate-600">
             <div>
-              <p className="font-medium text-slate-950">写在最后</p>
               <p>如果你现在：</p>
               <ul className="mt-2 list-disc space-y-2 pl-5">
                 <li>不太确定方向</li>
@@ -622,14 +745,12 @@ function AboutAuthor() {
                 <li>需要留学文书选校或求职面试辅导简历修改等帮助</li>
               </ul>
             </div>
-            <div className="space-y-1">
-              <p>可以直接找我聊一聊。</p>
-              <p className="whitespace-nowrap overflow-x-auto text-[13px] leading-6 text-slate-500">
-                （咨询服务收费，牛马的时间很宝贵呜呜谢谢体谅，本人非专业留学和求职咨询服务提供者所以一定不贵。随缘接单！初衷还是分享工具）
-              </p>
-            </div>
+            <p>可以直接找我聊一聊。</p>
+            <p className="max-w-xl text-[13px] leading-6 text-slate-500">
+              （咨询服务收费，牛马的时间很宝贵呜呜谢谢体谅，本人非专业留学和求职咨询服务提供者所以一定不贵。随缘接单！初衷还是分享工具）
+            </p>
             <a
-              href="https://www.xiaohongshu.com/"
+              href="https://xhslink.com/m/Ln9DMc7afx"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
@@ -727,169 +848,130 @@ export default function Home() {
   }, [applications, resumeVersions]);
 
   const bestResumeVersion = [...resumeUsageStats].sort((a, b) => b.interviewCount - a.interviewCount)[0] ?? null;
-  const chartPalette = ["#4f46e5", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-
-  const statusChartData = useMemo(
-    () =>
-      statuses.map((status) => ({
-        name: status,
-        value: applications.filter((item) => item.status === status).length,
-      })),
-    [applications],
-  );
-
-  const industryChartData = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of applications) {
-      const key = item.industry?.trim();
-      if (!key) continue;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return [...counts.entries()]
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [applications]);
-
-  const locationChartData = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of applications) {
-      const key = item.location?.trim();
-      if (!key) continue;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    return [...counts.entries()]
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [applications]);
-
-  const resumeVersionChartData = useMemo(
-    () =>
-      resumeUsageStats
-        .filter((version) => version.usageCount > 0)
-        .map((version) => ({ name: version.name, value: version.usageCount })),
-    [resumeUsageStats],
-  );
-  const { interviewReminders, hasInterviewSchedule } = useMemo(() => {
-    const extractDate = (value: unknown) => {
-      if (typeof value !== "string") return "";
-      return value.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
-    };
-
-    const isReviewed = (record: unknown) => {
-      if (!record || typeof record !== "object") return false;
-      const typed = record as {
-        questions?: unknown;
-        summary?: unknown;
-        nextAction?: unknown;
-        score?: unknown;
-      };
-      const questions = typeof typed.questions === "string" ? typed.questions.trim() : "";
-      const summary = typeof typed.summary === "string" ? typed.summary.trim() : "";
-      const nextAction = typeof typed.nextAction === "string" ? typed.nextAction.trim() : "";
-      const scoreValue = typeof typed.score === "number" ? typed.score : Number(typed.score);
-      const hasScore = Number.isFinite(scoreValue) && scoreValue !== 0;
-      return Boolean(questions || summary || nextAction || hasScore);
-    };
-
-    const buildWhenLabel = (date: string, time?: unknown) => {
-      const trimmedTime = typeof time === "string" ? time.trim() : "";
-      return trimmedTime ? `${date} ${trimmedTime}` : date;
-    };
-
-    const reminders: Array<{
-      key: string;
+  const interviewReminderItems = applications.flatMap((item) => {
+    const reminders: {
+      id: string;
       applicationId: string;
       company: string;
       role: string;
       date: string;
-      whenLabel: string;
-      kind: "today" | "past" | "future";
       message: string;
-    }> = [];
-    let hasSchedule = false;
+      tone: "today" | "past" | "future";
+    }[] = [];
 
-    for (const application of applications) {
-      const scheduleByDate = new Map<string, { whenLabel: string; reviewed: boolean }>();
-
-      const addSchedule = (date: string, time: unknown, reviewed: boolean) => {
-        if (!date) return;
-        hasSchedule = true;
-        const existing = scheduleByDate.get(date);
-        const whenLabel = existing?.whenLabel ?? buildWhenLabel(date, time);
-        scheduleByDate.set(date, {
-          whenLabel,
-          reviewed: (existing?.reviewed ?? false) || reviewed,
-        });
-      };
-
-      for (const interview of application.interviews ?? []) {
-        const interviewData = interview as unknown as { interviewDate?: unknown; interviewTime?: unknown; date?: unknown };
-        addSchedule(
-          extractDate(interviewData.interviewDate ?? interviewData.date),
-          interviewData.interviewTime,
-          isReviewed(interview),
+    const hasReviewedInterview = item.interviews.some(hasInterviewReview);
+    const interviewRecordDates = item.interviews
+      .map((interview) => {
+        const interviewWithOptionalDates = interview as InterviewRecord & {
+          interviewDate?: string;
+          interviewTime?: string;
+        };
+        return normalizeDateInput(
+          interviewWithOptionalDates.interviewDate ||
+            interviewWithOptionalDates.interviewTime ||
+            interview.date,
         );
-      }
+      })
+      .filter(Boolean);
+    const applicationInterviewDate = normalizeDateInput(item.interviewTime);
 
-      const applicationInterviewDate = extractDate(application.interviewTime);
-      if (applicationInterviewDate) {
-        const matchedReview = scheduleByDate.get(applicationInterviewDate)?.reviewed ?? false;
-        addSchedule(applicationInterviewDate, undefined, matchedReview);
-      }
-
-      for (const [date, entry] of scheduleByDate.entries()) {
-        if (date === today) {
-          reminders.push({
-            key: `${application.id}:${date}`,
-            applicationId: application.id,
-            company: application.company,
-            role: application.role,
-            date,
-            whenLabel: entry.whenLabel,
-            kind: "today",
-            message: "你今天有面试，结束后记得记录问题和复盘。",
-          });
-          continue;
-        }
-
-        if (date < today) {
-          if (entry.reviewed) continue;
-          reminders.push({
-            key: `${application.id}:${date}`,
-            applicationId: application.id,
-            company: application.company,
-            role: application.role,
-            date,
-            whenLabel: entry.whenLabel,
-            kind: "past",
-            message: "你有一场已完成的面试还没有复盘，建议补充面试问题和表现记录。",
-          });
-          continue;
-        }
-
+    if (applicationInterviewDate && !interviewRecordDates.includes(applicationInterviewDate)) {
+      if (applicationInterviewDate === today) {
         reminders.push({
-          key: `${application.id}:${date}`,
-          applicationId: application.id,
-          company: application.company,
-          role: application.role,
-          date,
-          whenLabel: entry.whenLabel,
-          kind: "future",
+          id: `${item.id}-application-today`,
+          applicationId: item.id,
+          company: item.company,
+          role: item.role,
+          date: applicationInterviewDate,
+          message: "你今天有面试，结束后记得记录问题和复盘。",
+          tone: "today",
+        });
+      } else if (applicationInterviewDate < today && !hasReviewedInterview) {
+        reminders.push({
+          id: `${item.id}-application-past`,
+          applicationId: item.id,
+          company: item.company,
+          role: item.role,
+          date: applicationInterviewDate,
+          message: "你有一场已完成的面试还没有复盘，建议补充面试问题和表现记录。",
+          tone: "past",
+        });
+      } else if (applicationInterviewDate > today) {
+        reminders.push({
+          id: `${item.id}-application-future`,
+          applicationId: item.id,
+          company: item.company,
+          role: item.role,
+          date: applicationInterviewDate,
           message: "你有即将到来的面试，可以提前准备常见问题。",
+          tone: "future",
         });
       }
     }
 
-    const kindOrder = { today: 0, future: 1, past: 2 } as const;
-    reminders.sort((a, b) => {
-      const kindDiff = kindOrder[a.kind] - kindOrder[b.kind];
-      if (kindDiff !== 0) return kindDiff;
-      if (a.kind === "past") return b.date.localeCompare(a.date);
-      return a.date.localeCompare(b.date);
+    item.interviews.forEach((interview) => {
+      const interviewWithOptionalDates = interview as InterviewRecord & {
+        interviewDate?: string;
+        interviewTime?: string;
+      };
+      const interviewDate = normalizeDateInput(
+        interviewWithOptionalDates.interviewDate ||
+          interviewWithOptionalDates.interviewTime ||
+          interview.date,
+      );
+      if (!interviewDate) return;
+
+      if (interviewDate === today) {
+        reminders.push({
+          id: `${item.id}-${interview.id}-today`,
+          applicationId: item.id,
+          company: item.company,
+          role: item.role,
+          date: interviewDate,
+          message: "你今天有面试，结束后记得记录问题和复盘。",
+          tone: "today",
+        });
+      } else if (interviewDate < today && !hasInterviewReview(interview)) {
+        reminders.push({
+          id: `${item.id}-${interview.id}-past`,
+          applicationId: item.id,
+          company: item.company,
+          role: item.role,
+          date: interviewDate,
+          message: "你有一场已完成的面试还没有复盘，建议补充面试问题和表现记录。",
+          tone: "past",
+        });
+      } else if (interviewDate > today) {
+        reminders.push({
+          id: `${item.id}-${interview.id}-future`,
+          applicationId: item.id,
+          company: item.company,
+          role: item.role,
+          date: interviewDate,
+          message: "你有即将到来的面试，可以提前准备常见问题。",
+          tone: "future",
+        });
+      }
     });
 
-    return { interviewReminders: reminders, hasInterviewSchedule: hasSchedule };
-  }, [applications, today]);
+    return reminders;
+  });
+  const hasAnyInterviewTime = applications.some((item) => {
+    if (normalizeDateInput(item.interviewTime)) return true;
+    return item.interviews.some((interview) => {
+      const interviewWithOptionalDates = interview as InterviewRecord & {
+        interviewDate?: string;
+        interviewTime?: string;
+      };
+      return Boolean(
+        normalizeDateInput(
+          interviewWithOptionalDates.interviewDate ||
+            interviewWithOptionalDates.interviewTime ||
+            interview.date,
+        ),
+      );
+    });
+  });
 
   const filteredApplications = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -924,6 +1006,40 @@ export default function Home() {
         (a, b) => getPriorityAverage(b.priorityScores) - getPriorityAverage(a.priorityScores),
       ),
     [filteredApplications],
+  );
+  const dataBoardStats = useMemo(
+    () => ({
+      total: sortedApplications.length,
+      interviewing: sortedApplications.filter((item) => item.status === "面试中").length,
+      offers: sortedApplications.filter((item) => item.status === "Offer").length,
+      followUp: sortedApplications.filter((item) => item.status === "待跟进").length,
+    }),
+    [sortedApplications],
+  );
+  const statusDistribution = useMemo(
+    () =>
+      statuses.map((status) => ({
+        label: status,
+        value: sortedApplications.filter((item) => item.status === status).length,
+        color: statusChartColors[status],
+      })),
+    [sortedApplications],
+  );
+  const industryDistribution = useMemo(
+    () => buildDistribution(sortedApplications, (item) => item.industry),
+    [sortedApplications],
+  );
+  const locationDistribution = useMemo(
+    () => buildDistribution(sortedApplications, (item) => item.location),
+    [sortedApplications],
+  );
+  const resumeVersionDistribution = useMemo(
+    () =>
+      resumeVersions.map((version) => ({
+        label: version.name,
+        value: sortedApplications.filter((item) => item.resumeVersionId === version.id).length,
+      })),
+    [resumeVersions, sortedApplications],
   );
 
   const topPriorityApplications = useMemo(
@@ -1013,6 +1129,7 @@ export default function Home() {
         updatedAt: now,
       };
       setApplications((current) => [record, ...current]);
+      setSelectedId(null);
     }
 
     closeForm();
@@ -1321,7 +1438,7 @@ export default function Home() {
                   今天也在找工作
                 </h1>
                 <p className="mt-2 text-sm text-slate-500 md:text-base">
-                  {username.trim() ? `${username.trim()}，${encouragement}` : "今天也会有好消息"}
+                  {username.trim() ? `${username.trim()}，${encouragement}` : "今天一定有Offer"}
                 </p>
               </div>
               <Input
@@ -1359,14 +1476,14 @@ export default function Home() {
                 <MetricCard label="投递转化率" value={`${stats.conversionRate}%`} hint="面试中 + Offer / 总投递" />
               </div>
 
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm text-slate-600 shadow-sm">
                 数据保存在本地浏览器，清除缓存会丢失。
               </div>
 
-              <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
-                <div className="space-y-6">
+              <div className="mt-6 grid grid-cols-1 items-stretch gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.9fr)]">
+                <div className="flex h-full flex-col gap-6">
                   {!hasUserData && (
-                    <Card className="border-slate-300 bg-white">
+                    <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                       <CardContent className="p-6">
                         <p className="text-lg font-semibold text-slate-950">开始建立你的求职工作台</p>
                         <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -1388,12 +1505,12 @@ export default function Home() {
                     </Card>
                   )}
 
-                  <Card>
-                    <CardHeader>
+                  <Card className="min-h-[260px] rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="px-6 pt-6 pb-0">
                       <CardTitle>建议优先准备评分最高的 3 个岗位</CardTitle>
                       <CardDescription>按薪资、成长、匹配度、地点、公司吸引力平均分排序。</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-3 md:grid-cols-3">
+                    <CardContent className="grid gap-4 p-6 md:grid-cols-3">
                       {topPriorityApplications.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 md:col-span-3">
                           新增投递并填写优先级评分后，这里会推荐最值得准备的岗位。
@@ -1408,7 +1525,7 @@ export default function Home() {
                               setSelectedId(item.id);
                               setActiveView("tracker");
                             }}
-                            className="rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:bg-slate-50"
+                            className="rounded-xl border border-slate-200 bg-white p-4 text-left transition-all duration-200 hover:bg-slate-50"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <Badge variant={priorityBadge(level) as never}>{level}优先级</Badge>
@@ -1422,12 +1539,12 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
+                  <Card className="flex flex-1 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="px-6 pt-6 pb-0">
                       <CardTitle>最近投递记录</CardTitle>
                       <CardDescription>按投递日期排序，点击可查看详情。</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="flex flex-1 flex-col space-y-3 p-6">
                       {recentApplications.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
                           暂无投递记录
@@ -1439,18 +1556,19 @@ export default function Home() {
                             setSelectedId(item.id);
                             setActiveView("tracker");
                           }}
-                        className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                        className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50"
                       >
                         {(() => {
                           const average = getPriorityAverage(item.priorityScores);
                           const level = getPriorityLevel(average);
                           return (
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="font-medium text-slate-950">{item.role}</p>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-slate-950">{item.role}</p>
                             <p className="mt-1 text-sm text-slate-500">{item.company} · {item.location || "未填写 Base"}</p>
+                            <p className="mt-2 text-xs text-slate-500">{item.appliedDate} · {item.channel || "渠道未填写"}</p>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex shrink-0 flex-wrap gap-2 sm:max-w-[260px] sm:justify-end">
                             <Badge variant={priorityBadge(level) as never}>{level}优先级 · {average}</Badge>
                             <Badge variant="soft">{getResumeVersionName(item.resumeVersionId, item.resumeVersion)}</Badge>
                             <Badge variant={statusBadge(item.status) as never}>{item.status}</Badge>
@@ -1458,7 +1576,6 @@ export default function Home() {
                         </div>
                           );
                         })()}
-                        <p className="mt-2 text-xs text-slate-500">{item.appliedDate} · {item.channel || "渠道未填写"}</p>
                       </button>
                       ))}
                     </CardContent>
@@ -1466,9 +1583,9 @@ export default function Home() {
 
                 </div>
 
-                <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
+                <div className="flex h-full flex-col gap-6">
+                  <Card className="min-h-[260px] rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="px-6 pt-6 pb-0">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <CardTitle>今日情绪状态</CardTitle>
@@ -1481,13 +1598,13 @@ export default function Home() {
                         )}
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6">
                       {dashboardEmotion ? (
                         <>
                           <p className="text-sm text-slate-600">
                             {todayEmotion ? "今日已记录。" : `今日尚未记录，最近一次是 ${dashboardEmotion.date}。`}
                           </p>
-                          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <p className="text-xs font-medium text-slate-500">行动建议</p>
                             <p className="mt-1 text-sm font-medium text-slate-900">{emotionActions[dashboardEmotion.emotion]}</p>
                           </div>
@@ -1503,57 +1620,71 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
+                  <Card className="min-h-[220px] rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="px-6 pt-6 pb-0">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <CardTitle>面试记录提醒</CardTitle>
-                          <CardDescription>根据面试时间动态提示需要准备或补充复盘的面试。</CardDescription>
+                          <CardDescription>根据面试时间提醒你准备、记录和复盘。</CardDescription>
                         </div>
-                        <Badge variant={interviewReminders.length > 0 ? "warning" : "soft"}>{interviewReminders.length}</Badge>
+                        <Badge variant={interviewReminderItems.length > 0 ? "warning" : "soft"}>
+                          {interviewReminderItems.length} 条
+                        </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      {interviewReminders.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                          {hasInterviewSchedule
-                            ? "当前没有需要提醒的面试。"
+                    <CardContent className="space-y-3 p-6">
+                      {interviewReminderItems.length === 0 ? (
+                        <div className="flex min-h-[112px] items-center justify-center rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                          {hasAnyInterviewTime
+                            ? "暂无需要处理的面试提醒。"
                             : "还没有面试安排。你可以在投递记录中手动添加面试时间。"}
                         </div>
                       ) : (
-                        interviewReminders.map((reminder) => (
-                          <div key={reminder.key} className="rounded-xl border border-slate-200 bg-white p-3">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-slate-950">{reminder.company}</p>
-                                <p className="mt-1 text-sm text-slate-500">{reminder.role}</p>
-                                <p className="mt-1 text-xs text-slate-500">面试时间：{reminder.whenLabel}</p>
-                                <p className="mt-1 text-xs font-medium text-slate-700">{reminder.message}</p>
+                        interviewReminderItems.map((item) => (
+                          <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-medium text-slate-950">{item.company}</p>
+                                <p className="mt-1 text-sm text-slate-500">{item.role}</p>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                  setSelectedId(reminder.applicationId);
-                                  setActiveView("tracker");
-                                }}
+                              <Badge
+                                variant={
+                                  item.tone === "past"
+                                    ? "warning"
+                                    : item.tone === "today"
+                                      ? "success"
+                                      : "soft"
+                                }
                               >
-                                去记录复盘
-                              </Button>
+                                {item.date}
+                              </Badge>
                             </div>
+                            <p className="mt-2 text-xs leading-5 text-slate-600">{item.message}</p>
+                            <p className="mt-1 text-xs text-slate-500">时间：{item.date}</p>
+                            <Button
+                              className="mt-3"
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setSelectedId(item.applicationId);
+                                setActiveView("tracker");
+                              }}
+                            >
+                              去记录复盘
+                            </Button>
                           </div>
                         ))
                       )}
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
+                  <Card className="flex min-h-[420px] flex-1 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="px-6 pt-6 pb-0">
                       <CardDescription>
                         {bestResumeVersion ? `当前面试产出最多：${bestResumeVersion.name}` : "记录投递后会自动统计版本效果。"}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-3">
+                    <CardContent className="grid flex-1 content-start gap-3 p-6">
                       {resumeUsageStats.map((version) => (
                         <div key={version.id} className="rounded-xl border border-slate-200 bg-white p-3">
                           <div className="flex items-start justify-between gap-2">
@@ -1586,13 +1717,15 @@ export default function Home() {
                 }
               />
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                <MetricCard label="总投递数" value={`${stats.total}`} hint="当前记录总数" />
-                <MetricCard label="面试中" value={`${stats.interviewing}`} hint="需要安排准备" />
-                <MetricCard label="Offer" value={`${stats.offers}`} hint="等待最终决策" />
-                <MetricCard label="待跟进" value={`${stats.followUp}`} hint="建议主动推进" />
-                <MetricCard label="投递转化率" value={`${stats.conversionRate}%`} hint="面试中 + Offer / 总投递" />
-              </div>
+              {trackerView === "table" && (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                  <MetricCard label="总投递数" value={`${stats.total}`} hint="当前记录总数" />
+                  <MetricCard label="面试中" value={`${stats.interviewing}`} hint="需要安排准备" />
+                  <MetricCard label="Offer" value={`${stats.offers}`} hint="等待最终决策" />
+                  <MetricCard label="待跟进" value={`${stats.followUp}`} hint="建议主动推进" />
+                  <MetricCard label="投递转化率" value={`${stats.conversionRate}%`} hint="面试中 + Offer / 总投递" />
+                </div>
+              )}
 
               <Card className="mt-6">
                 <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -1611,8 +1744,8 @@ export default function Home() {
                         <button
                           key={type}
                           className={cn(
-                            "rounded-lg px-3 py-1.5 text-sm font-medium transition",
-                            applicationTypeFilter === type ? "bg-white text-slate-950 shadow-sm" : "text-slate-500",
+                            "rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200",
+                            applicationTypeFilter === type ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
                           )}
                           onClick={() => setApplicationTypeFilter(type)}
                         >
@@ -1623,8 +1756,8 @@ export default function Home() {
                     <div className="flex rounded-xl bg-slate-100 p-1">
                       <button
                         className={cn(
-                          "rounded-lg px-3 py-1.5 text-sm font-medium transition",
-                          trackerView === "table" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500",
+                          "rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200",
+                          trackerView === "table" ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
                         )}
                         onClick={() => setTrackerView("table")}
                       >
@@ -1632,8 +1765,8 @@ export default function Home() {
                       </button>
                       <button
                         className={cn(
-                          "rounded-lg px-3 py-1.5 text-sm font-medium transition",
-                          trackerView === "kanban" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500",
+                          "rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200",
+                          trackerView === "kanban" ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900",
                         )}
                         onClick={() => setTrackerView("kanban")}
                       >
@@ -1667,14 +1800,14 @@ export default function Home() {
                           const level = getPriorityLevel(average);
                           return (
                           <tr key={item.id} className="group align-top hover:bg-slate-50">
-                            <td className="sticky left-0 z-10 min-w-[180px] whitespace-nowrap border-b border-slate-100 bg-white px-4 py-3 text-sm font-medium text-slate-950 group-hover:bg-slate-50">
+                            <td className="sticky left-0 z-10 min-w-[180px] whitespace-nowrap border-b border-slate-100 bg-white px-4 py-3 text-sm font-medium group-hover:bg-slate-50">
                               <button
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   openEditForm(item);
                                 }}
-                                className="cursor-pointer text-left text-slate-950 transition hover:text-slate-900 hover:underline"
+                                className="cursor-pointer text-left text-slate-950 transition-all duration-200 hover:text-slate-600 hover:underline"
                               >
                                 {item.company}
                               </button>
@@ -1691,7 +1824,7 @@ export default function Home() {
                             <td className="min-w-[140px] whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm text-slate-600">{item.appliedDate}</td>
                             <td className="min-w-[140px] whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm">
                               <select
-                                className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300"
+                                className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none focus:ring-2 focus:ring-slate-300"
                                 value={item.status}
                                 onChange={(event) => updateStatus(item.id, event.target.value as ApplicationStatus)}
                               >
@@ -1741,151 +1874,60 @@ export default function Home() {
                 </Card>
               ) : (
                 <div className="mt-6 space-y-6">
-                  <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <MetricCard label="总投递数" value={`${dataBoardStats.total}`} hint="当前筛选范围" />
+                    <MetricCard label="面试中" value={`${dataBoardStats.interviewing}`} hint="正在推进" />
+                    <MetricCard label="Offer 数" value={`${dataBoardStats.offers}`} hint="已进入结果阶段" />
+                    <MetricCard label="待跟进" value={`${dataBoardStats.followUp}`} hint="建议主动推进" />
+                  </div>
+
+                  <div className="grid gap-6 xl:grid-cols-2">
                     <Card>
                       <CardHeader>
                         <CardTitle>投递进度分布</CardTitle>
-                        <CardDescription>按投递状态统计当前记录数量。</CardDescription>
+                        <CardDescription>不同投递状态的数量占比。</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        {applications.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-                            还没有投递记录，新增第一条后这里会显示分布。
-                          </div>
-                        ) : (
-                          <>
-                            <div className="h-64 w-full">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                  <Pie data={statusChartData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={2}>
-                                    {statusChartData.map((entry, index) => (
-                                      <Cell key={entry.name} fill={chartPalette[index % chartPalette.length]} />
-                                    ))}
-                                  </Pie>
-                                  <Tooltip />
-                                </PieChart>
-                              </ResponsiveContainer>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {statusChartData.map((entry) => (
-                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                  <span className="truncate">{entry.name}</span>
-                                  <span className="font-medium text-slate-900">{entry.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
+                      <CardContent>
+                        <DonutChart data={statusDistribution} />
                       </CardContent>
                     </Card>
 
                     <Card>
                       <CardHeader>
                         <CardTitle>行业分布</CardTitle>
-                        <CardDescription>统计投递记录中的行业字段。</CardDescription>
+                        <CardDescription>按投递记录中的行业字段统计。</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        {industryChartData.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-                            暂无行业数据，可在投递记录中补充行业信息。
-                          </div>
-                        ) : (
-                          <>
-                            <div className="h-72 w-full">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={industryChartData} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                  <XAxis type="number" tickLine={false} axisLine={false} />
-                                  <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={88} />
-                                  <Tooltip />
-                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} fill="#0ea5e9" />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {industryChartData.map((entry) => (
-                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                  <span className="truncate">{entry.name}</span>
-                                  <span className="font-medium text-slate-900">{entry.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
+                      <CardContent>
+                        <BarList
+                          data={industryDistribution}
+                          emptyText="暂无行业数据，可在投递记录中补充行业信息。"
+                        />
                       </CardContent>
                     </Card>
-                  </div>
 
-                  <div className="grid gap-6 lg:grid-cols-2">
                     <Card>
                       <CardHeader>
                         <CardTitle>城市 / Base 分布</CardTitle>
-                        <CardDescription>统计投递记录中的 Base 字段。</CardDescription>
+                        <CardDescription>查看投递集中在哪些地点。</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        {locationChartData.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-                            暂无 Base 数据，可在投递记录中补充 Base 信息。
-                          </div>
-                        ) : (
-                          <>
-                            <div className="h-72 w-full">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={locationChartData} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                  <XAxis type="number" tickLine={false} axisLine={false} />
-                                  <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={88} />
-                                  <Tooltip />
-                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} fill="#10b981" />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {locationChartData.map((entry) => (
-                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                  <span className="truncate">{entry.name}</span>
-                                  <span className="font-medium text-slate-900">{entry.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
+                      <CardContent>
+                        <BarList
+                          data={locationDistribution}
+                          emptyText="暂无 Base 数据，可在投递记录中补充 Base 地。"
+                        />
                       </CardContent>
                     </Card>
 
                     <Card>
                       <CardHeader>
                         <CardTitle>简历版本使用情况</CardTitle>
-                        <CardDescription>统计每个简历版本被绑定的次数。</CardDescription>
+                        <CardDescription>统计每个简历版本被使用的次数。</CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        {resumeVersionChartData.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
-                            暂无简历版本使用数据。
-                          </div>
-                        ) : (
-                          <>
-                            <div className="h-72 w-full">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={resumeVersionChartData} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
-                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                  <XAxis type="number" tickLine={false} axisLine={false} />
-                                  <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={88} />
-                                  <Tooltip />
-                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} fill="#6366f1" />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {resumeVersionChartData.map((entry) => (
-                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                  <span className="truncate">{entry.name}</span>
-                                  <span className="font-medium text-slate-900">{entry.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
+                      <CardContent>
+                        <BarList
+                          data={resumeVersionDistribution}
+                          emptyText="暂无简历版本使用数据。"
+                        />
                       </CardContent>
                     </Card>
                   </div>
@@ -2086,9 +2128,9 @@ export default function Home() {
                                   key={`${item.emotion}-${item.label}`}
                                   onClick={() => setEmotionForm((current) => ({ ...current, emotion: item.emotion }))}
                                   className={cn(
-                                    "flex min-h-[96px] flex-col items-center justify-center rounded-xl border px-3 py-4 text-center transition",
+                                    "flex min-h-[96px] flex-col items-center justify-center rounded-xl border px-3 py-4 text-center transition-all duration-200",
                                     emotionForm.emotion === item.emotion
-                                      ? "border-slate-300 bg-slate-50 shadow-sm"
+                                      ? "border-slate-900 bg-slate-900 shadow-sm [&>span:last-child]:text-white"
                                       : "border-transparent bg-white hover:border-slate-200 hover:bg-slate-50",
                                   )}
                                 >
@@ -2165,6 +2207,7 @@ export default function Home() {
             <>
               <PageHeader
                 title="数据设置"
+                subtitle="当前版本采用本地优先存储，适合 MVP 上线和早期用户试用。"
                 action={<Button onClick={exportData}><Download className="h-4 w-4" /> 导出备份</Button>}
               />
 
@@ -2175,16 +2218,18 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="space-y-6 text-sm leading-7 text-slate-600">
                     <p>当前数据保存在你的浏览器本地（localStorage），不会上传服务器，也不需要账号。</p>
+
                     <div className="space-y-3">
-                      <p>这意味着：</p>
+                      <p className="font-medium text-slate-900">这意味着：</p>
                       <ul className="list-disc space-y-2 pl-5">
                         <li>关闭网页后再次打开，同一浏览器中数据仍然存在</li>
                         <li>如果更换设备 / 更换浏览器 / 清除缓存，数据将无法恢复</li>
                       </ul>
                     </div>
-                    <div className="space-y-3">
+
+                    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <p>为了避免数据丢失，建议你定期进行备份：</p>
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <p>👉 使用右侧「导出 JSON」功能保存数据</p>
                         <p>👉 在需要时可通过「导入数据」恢复</p>
                       </div>
@@ -2247,7 +2292,7 @@ export default function Home() {
               <div className="rounded-xl border border-slate-200 p-3">
                 <p className="text-xs text-slate-500">状态</p>
                 <select
-                  className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
                   value={selectedApplication.status}
                   onChange={(event) => updateStatus(selectedApplication.id, event.target.value as ApplicationStatus)}
                 >
@@ -2404,7 +2449,7 @@ export default function Home() {
                 </Field>
                 <Field label="表现评分">
                   <select
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                     value={interviewForm.score}
                     onChange={(event) => setInterviewForm((current) => ({ ...current, score: Number(event.target.value) }))}
                   >
@@ -2525,7 +2570,7 @@ export default function Home() {
 	              </Field>
 	              <Field label="行业类型">
 	                <select
-	                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+	                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
 	                  value={form.industry}
 	                  onChange={(event) => setForm({ ...form, industry: event.target.value })}
 	                >
@@ -2543,7 +2588,7 @@ export default function Home() {
               </Field>
               <Field label="投递类型">
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                   value={form.applicationType}
                   onChange={(event) => setForm({ ...form, applicationType: event.target.value as ApplicationType })}
                 >
@@ -2554,7 +2599,7 @@ export default function Home() {
               </Field>
               <Field label="状态">
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                   value={form.status}
                   onChange={(event) => setForm({ ...form, status: event.target.value as ApplicationStatus })}
                 >
@@ -2565,7 +2610,7 @@ export default function Home() {
               </Field>
               <Field label="使用简历版本 *">
                 <select
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                   value={form.resumeVersionId}
                   onChange={(event) => setForm({ ...form, resumeVersionId: event.target.value })}
                 >
@@ -2587,7 +2632,7 @@ export default function Home() {
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <Field label="是否有转正机会">
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                         value={form.internship.hasConversionChance}
                         onChange={(event) =>
                           setForm({
@@ -2606,7 +2651,7 @@ export default function Home() {
                     </Field>
                     <Field label="信息来源">
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                         value={form.internship.infoSource}
                         onChange={(event) =>
                           setForm({
@@ -2625,7 +2670,7 @@ export default function Home() {
                     </Field>
                     <Field label="信息可信度">
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                         value={form.internship.infoConfidence}
                         onChange={(event) =>
                           setForm({
@@ -2644,7 +2689,7 @@ export default function Home() {
                     </Field>
                     <Field label="投入程度">
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                         value={form.internship.intensity}
                         onChange={(event) =>
                           setForm({
@@ -2693,7 +2738,7 @@ export default function Home() {
                     </Field>
                     <Field label="是否影响秋招">
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                         value={form.internship.affectsAutumnRecruitment}
                         onChange={(event) =>
                           setForm({
@@ -2752,7 +2797,7 @@ export default function Home() {
                   ].map(([label, key]) => (
                     <Field key={key} label={label}>
                       <select
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
                         value={form.priorityScores[key as keyof PriorityScores]}
                         onChange={(event) =>
                           setForm({
