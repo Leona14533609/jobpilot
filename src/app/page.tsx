@@ -3,14 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BriefcaseBusiness,
-  Calendar,
   CheckCircle2,
   Download,
   Eye,
   FileText,
   HeartPulse,
   LayoutDashboard,
-  MapPin,
   Pencil,
   Plus,
   Settings,
@@ -20,6 +18,18 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -579,64 +589,12 @@ function AboutAuthor() {
     <>
       <PageHeader title="关于作者" />
 
-      <div className="mx-auto max-w-4xl space-y-5">
-        <Card>
-          <CardHeader>
-            <CardTitle>个人信息</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6 text-sm leading-8 text-slate-700">
-            <p className="text-base font-semibold text-slate-950">Hihi 大家好 我是Leona</p>
-            <p>
-              作为一名普通商科🐶，在留学申请和找工的过程中，我的背景并不算Top，个人成长环境中也没有现成的规划建议，求学和找工过程中基本全自主探索决策。
-            </p>
-            <div>
-              <p className="font-medium text-slate-950">教育背景：</p>
-              <ul className="mt-2 list-disc space-y-2 pl-5">
-                <li>本科：211 财经院校（非两财一贸）</li>
-                <li>硕士：🇬🇧 帝国理工</li>
-              </ul>
-            </div>
-            <div>
-              <p className="font-medium text-slate-950">实习 / 工作经历：</p>
-              <ul className="mt-2 list-disc space-y-2 pl-5">
-                <li>券商（前 / 中 / 后台）</li>
-                <li>外资咨询</li>
-                <li>理财子</li>
-                <li>互联网内容运营</li>
-                <li>Fintech 公司</li>
-              </ul>
-            </div>
-            <p>
-              对商科同学常见的留学申请、实习选择和求职路径，
-              <br />
-              都有比较真实的一线体感。
-            </p>
-            <p>
-              留学申请阶段，均分没有到90，本科院校也不占优，
-              <br />
-              但通过语言成绩和实践经历的补齐（加上一点运气），
-              <br />
-              最终拿到了 IC、UCL 、王曼华和港大的 offer。
-            </p>
-            <p>
-              找工阶段拥有超绝 “我命由我不由天”的赌狗心态，非海投选手，也确实在过程中经历了比较强的焦虑。
-            </p>
-            <div>
-              <p>但慢慢试下来：</p>
-              <ul className="mt-2 list-disc space-y-2 pl-5">
-                <li>暑期实习拿到了理财子、券商和外资 Fintech 公司 offer</li>
-                <li>整个求职中拿到了咨询，国资单位，以及头部 + 颈部券商多个 offer</li>
-                <li>在几乎 0 PM 经验的情况下，最终去向为 PM</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="mx-auto max-w-4xl space-y-10">
         <Card>
           <CardHeader>
             <CardTitle>为什么做这个工具</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-8 text-slate-700">
+          <CardContent className="space-y-6 text-sm leading-9 text-slate-700">
             <p>这个工具是我在复盘自己暑期实习和春秋招经历时做的。</p>
             <p>
               当时投了很多岗位但一直在零散记录， 一直缺乏一种“掌控感”。
@@ -651,7 +609,7 @@ function AboutAuthor() {
           <CardHeader>
             <CardTitle>理念 + 咨询入口</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5 text-sm leading-8 text-slate-700">
+          <CardContent className="space-y-7 text-sm leading-9 text-slate-700">
             <p>
               本人非绩优主义宣传者， 初衷是希望大家能够在少有确定性的市场中保持高配得感，通过数据看到自己的进展，少受一些带节奏的话术的影响，keep real并保持自己的节奏。
             </p>
@@ -664,10 +622,12 @@ function AboutAuthor() {
                 <li>需要留学文书选校或求职面试辅导简历修改等帮助</li>
               </ul>
             </div>
-            <p>可以直接找我聊一聊。</p>
-            <p className="whitespace-nowrap overflow-x-auto text-xs text-slate-500">
-              （咨询服务收费，牛马的时间很宝贵呜呜谢谢体谅，本人非专业留学和求职咨询服务提供者所以一定不贵。随缘接单！初衷还是分享工具）
-            </p>
+            <div className="space-y-1">
+              <p>可以直接找我聊一聊。</p>
+              <p className="whitespace-nowrap overflow-x-auto text-[13px] leading-6 text-slate-500">
+                （咨询服务收费，牛马的时间很宝贵呜呜谢谢体谅，本人非专业留学和求职咨询服务提供者所以一定不贵。随缘接单！初衷还是分享工具）
+              </p>
+            </div>
             <a
               href="https://www.xiaohongshu.com/"
               target="_blank"
@@ -767,13 +727,169 @@ export default function Home() {
   }, [applications, resumeVersions]);
 
   const bestResumeVersion = [...resumeUsageStats].sort((a, b) => b.interviewCount - a.interviewCount)[0] ?? null;
-  const interviewRecordReminders = applications.filter((item) => {
-    if (!item.interviewTime || item.interviewTime === "已完成") return false;
-    if (item.status !== "面试中" && item.status !== "Offer") return false;
-    if (item.interviews.length > 0) return false;
-    const interviewDate = item.interviewTime.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-    return interviewDate ? interviewDate <= today : false;
-  });
+  const chartPalette = ["#4f46e5", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+
+  const statusChartData = useMemo(
+    () =>
+      statuses.map((status) => ({
+        name: status,
+        value: applications.filter((item) => item.status === status).length,
+      })),
+    [applications],
+  );
+
+  const industryChartData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of applications) {
+      const key = item.industry?.trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [applications]);
+
+  const locationChartData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of applications) {
+      const key = item.location?.trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [applications]);
+
+  const resumeVersionChartData = useMemo(
+    () =>
+      resumeUsageStats
+        .filter((version) => version.usageCount > 0)
+        .map((version) => ({ name: version.name, value: version.usageCount })),
+    [resumeUsageStats],
+  );
+  const { interviewReminders, hasInterviewSchedule } = useMemo(() => {
+    const extractDate = (value: unknown) => {
+      if (typeof value !== "string") return "";
+      return value.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+    };
+
+    const isReviewed = (record: unknown) => {
+      if (!record || typeof record !== "object") return false;
+      const typed = record as {
+        questions?: unknown;
+        summary?: unknown;
+        nextAction?: unknown;
+        score?: unknown;
+      };
+      const questions = typeof typed.questions === "string" ? typed.questions.trim() : "";
+      const summary = typeof typed.summary === "string" ? typed.summary.trim() : "";
+      const nextAction = typeof typed.nextAction === "string" ? typed.nextAction.trim() : "";
+      const scoreValue = typeof typed.score === "number" ? typed.score : Number(typed.score);
+      const hasScore = Number.isFinite(scoreValue) && scoreValue !== 0;
+      return Boolean(questions || summary || nextAction || hasScore);
+    };
+
+    const buildWhenLabel = (date: string, time?: unknown) => {
+      const trimmedTime = typeof time === "string" ? time.trim() : "";
+      return trimmedTime ? `${date} ${trimmedTime}` : date;
+    };
+
+    const reminders: Array<{
+      key: string;
+      applicationId: string;
+      company: string;
+      role: string;
+      date: string;
+      whenLabel: string;
+      kind: "today" | "past" | "future";
+      message: string;
+    }> = [];
+    let hasSchedule = false;
+
+    for (const application of applications) {
+      const scheduleByDate = new Map<string, { whenLabel: string; reviewed: boolean }>();
+
+      const addSchedule = (date: string, time: unknown, reviewed: boolean) => {
+        if (!date) return;
+        hasSchedule = true;
+        const existing = scheduleByDate.get(date);
+        const whenLabel = existing?.whenLabel ?? buildWhenLabel(date, time);
+        scheduleByDate.set(date, {
+          whenLabel,
+          reviewed: (existing?.reviewed ?? false) || reviewed,
+        });
+      };
+
+      for (const interview of application.interviews ?? []) {
+        const interviewData = interview as unknown as { interviewDate?: unknown; interviewTime?: unknown; date?: unknown };
+        addSchedule(
+          extractDate(interviewData.interviewDate ?? interviewData.date),
+          interviewData.interviewTime,
+          isReviewed(interview),
+        );
+      }
+
+      const applicationInterviewDate = extractDate(application.interviewTime);
+      if (applicationInterviewDate) {
+        const matchedReview = scheduleByDate.get(applicationInterviewDate)?.reviewed ?? false;
+        addSchedule(applicationInterviewDate, undefined, matchedReview);
+      }
+
+      for (const [date, entry] of scheduleByDate.entries()) {
+        if (date === today) {
+          reminders.push({
+            key: `${application.id}:${date}`,
+            applicationId: application.id,
+            company: application.company,
+            role: application.role,
+            date,
+            whenLabel: entry.whenLabel,
+            kind: "today",
+            message: "你今天有面试，结束后记得记录问题和复盘。",
+          });
+          continue;
+        }
+
+        if (date < today) {
+          if (entry.reviewed) continue;
+          reminders.push({
+            key: `${application.id}:${date}`,
+            applicationId: application.id,
+            company: application.company,
+            role: application.role,
+            date,
+            whenLabel: entry.whenLabel,
+            kind: "past",
+            message: "你有一场已完成的面试还没有复盘，建议补充面试问题和表现记录。",
+          });
+          continue;
+        }
+
+        reminders.push({
+          key: `${application.id}:${date}`,
+          applicationId: application.id,
+          company: application.company,
+          role: application.role,
+          date,
+          whenLabel: entry.whenLabel,
+          kind: "future",
+          message: "你有即将到来的面试，可以提前准备常见问题。",
+        });
+      }
+    }
+
+    const kindOrder = { today: 0, future: 1, past: 2 } as const;
+    reminders.sort((a, b) => {
+      const kindDiff = kindOrder[a.kind] - kindOrder[b.kind];
+      if (kindDiff !== 0) return kindDiff;
+      if (a.kind === "past") return b.date.localeCompare(a.date);
+      return a.date.localeCompare(b.date);
+    });
+
+    return { interviewReminders: reminders, hasInterviewSchedule: hasSchedule };
+  }, [applications, today]);
 
   const filteredApplications = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -887,7 +1003,6 @@ export default function Home() {
             : item,
         ),
       );
-      setSelectedId(editingId);
     } else {
       const record: ApplicationRecord = {
         id: createId(),
@@ -898,7 +1013,6 @@ export default function Home() {
         updatedAt: now,
       };
       setApplications((current) => [record, ...current]);
-      setSelectedId(record.id);
     }
 
     closeForm();
@@ -1389,37 +1503,46 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-	                  <Card>
-	                    <CardHeader>
-	                      <CardTitle>面试记录提醒</CardTitle>
-	                      <CardDescription>检测到今天或之前的面试安排时，提醒你及时复盘记录。</CardDescription>
-	                    </CardHeader>
-	                    <CardContent className="space-y-3">
-	                      {interviewRecordReminders.length === 0 ? (
-	                        <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-	                          暂无待记录的面试
-	                        </div>
-	                      ) : (
-	                        interviewRecordReminders
-	                          .map((item) => (
-	                            <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
-	                              <p className="text-sm font-medium text-slate-950">{item.company}</p>
-	                              <p className="mt-1 text-sm text-slate-500">{item.role}</p>
-	                              <p className="mt-1 text-xs text-amber-600">检测到面试已结束，快来记录你的面试吧。</p>
-	                              <p className="mt-1 text-xs text-slate-500">面试时间：{item.interviewTime}</p>
-	                              <Button
-	                                className="mt-3"
-	                                size="sm"
-	                                variant="secondary"
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <CardTitle>面试记录提醒</CardTitle>
+                          <CardDescription>根据面试时间动态提示需要准备或补充复盘的面试。</CardDescription>
+                        </div>
+                        <Badge variant={interviewReminders.length > 0 ? "warning" : "soft"}>{interviewReminders.length}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {interviewReminders.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                          {hasInterviewSchedule
+                            ? "当前没有需要提醒的面试。"
+                            : "还没有面试安排。你可以在投递记录中手动添加面试时间。"}
+                        </div>
+                      ) : (
+                        interviewReminders.map((reminder) => (
+                          <div key={reminder.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-950">{reminder.company}</p>
+                                <p className="mt-1 text-sm text-slate-500">{reminder.role}</p>
+                                <p className="mt-1 text-xs text-slate-500">面试时间：{reminder.whenLabel}</p>
+                                <p className="mt-1 text-xs font-medium text-slate-700">{reminder.message}</p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="secondary"
                                 onClick={() => {
-                                  setSelectedId(item.id);
+                                  setSelectedId(reminder.applicationId);
                                   setActiveView("tracker");
-	                                }}
-	                              >
-	                                记录面试
-	                              </Button>
-	                            </div>
-	                          ))
+                                }}
+                              >
+                                去记录复盘
+                              </Button>
+                            </div>
+                          </div>
+                        ))
                       )}
                     </CardContent>
                   </Card>
@@ -1514,7 +1637,7 @@ export default function Home() {
                         )}
                         onClick={() => setTrackerView("kanban")}
                       >
-                        Kanban 看板
+                        数据看板
                       </button>
                     </div>
                   </div>
@@ -1544,7 +1667,18 @@ export default function Home() {
                           const level = getPriorityLevel(average);
                           return (
                           <tr key={item.id} className="group align-top hover:bg-slate-50">
-                            <td className="sticky left-0 z-10 min-w-[180px] whitespace-nowrap border-b border-slate-100 bg-white px-4 py-3 text-sm font-medium text-slate-950 group-hover:bg-slate-50">{item.company}</td>
+                            <td className="sticky left-0 z-10 min-w-[180px] whitespace-nowrap border-b border-slate-100 bg-white px-4 py-3 text-sm font-medium text-slate-950 group-hover:bg-slate-50">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openEditForm(item);
+                                }}
+                                className="cursor-pointer text-left text-slate-950 transition hover:text-slate-900 hover:underline"
+                              >
+                                {item.company}
+                              </button>
+                            </td>
                             <td className="sticky left-[180px] z-10 min-w-[160px] whitespace-nowrap border-b border-slate-100 bg-white px-4 py-3 text-sm shadow-[8px_0_12px_-12px_rgba(15,23,42,0.35)] group-hover:bg-slate-50">{item.role}</td>
                             <td className="min-w-[120px] whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm text-slate-600">{item.industry || "-"}</td>
                             <td className="min-w-[120px] whitespace-nowrap border-b border-slate-100 px-4 py-3 text-sm">
@@ -1606,61 +1740,155 @@ export default function Home() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="mt-6 grid gap-4 xl:grid-cols-3 2xl:grid-cols-6">
-                  {statuses.map((status) => {
-                    const columnItems = sortedApplications.filter((item) => item.status === status);
-                    return (
-                      <div key={status} className="rounded-2xl border border-slate-200 bg-slate-100/60 p-3">
-                        <div className="mb-3 flex items-center justify-between">
-                          <p className="text-sm font-semibold text-slate-900">{status}</p>
-                          <Badge variant="soft">{columnItems.length}</Badge>
-                        </div>
-                        <div className="space-y-3">
-                          {columnItems.map((item) => {
-                            const average = getPriorityAverage(item.priorityScores);
-                            const level = getPriorityLevel(average);
-                            return (
-                            <Card key={item.id} className="rounded-xl bg-white">
-                              <CardContent className="p-3">
-	                                <div className="flex items-start justify-between gap-2">
-	                                  <div>
-	                                    <p className="text-sm font-medium text-slate-950">{item.role}</p>
-	                                    <p className="mt-1 text-xs text-slate-500">{item.company}</p>
-	                                  </div>
-	                                  <Badge variant={statusBadge(item.status) as never}>{item.status}</Badge>
-	                                </div>
-                                {item.applicationType === "暑期实习" && (
-                                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                                    <p className="font-medium">暑期实习</p>
-                                    <p className="mt-1">转正：{item.internship.hasConversionChance} · {item.internship.infoSource} · 可信度{item.internship.infoConfidence}</p>
-                                    {item.internship.conversionDetails && <p className="mt-1">{item.internship.conversionDetails}</p>}
-                                  </div>
-                                )}
-	                                <div className="mt-3 space-y-1 text-xs text-slate-500">
-                                  <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {item.location || "未填写 Base"}</p>
-                                  <p className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> {item.appliedDate}</p>
-                                </div>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  <Badge variant={priorityBadge(level) as never}>{level} · {average}</Badge>
-                                  <Badge variant="soft">{getResumeVersionName(item.resumeVersionId, item.resumeVersion)}</Badge>
-                                </div>
-                                <div className="mt-3 flex gap-1.5">
-                                  <Button size="sm" variant="secondary" onClick={() => setSelectedId(item.id)}>详情</Button>
-                                  <Button size="sm" variant="secondary" onClick={() => openEditForm(item)}>编辑</Button>
-                                </div>
-                              </CardContent>
-                            </Card>
-                            );
-                          })}
-                          {columnItems.length === 0 && (
-                            <div className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-xs text-slate-500">
-                              暂无记录
+                <div className="mt-6 space-y-6">
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>投递进度分布</CardTitle>
+                        <CardDescription>按投递状态统计当前记录数量。</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {applications.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+                            还没有投递记录，新增第一条后这里会显示分布。
+                          </div>
+                        ) : (
+                          <>
+                            <div className="h-64 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie data={statusChartData} dataKey="value" nameKey="name" innerRadius={70} outerRadius={100} paddingAngle={2}>
+                                    {statusChartData.map((entry, index) => (
+                                      <Cell key={entry.name} fill={chartPalette[index % chartPalette.length]} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip />
+                                </PieChart>
+                              </ResponsiveContainer>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {statusChartData.map((entry) => (
+                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                                  <span className="truncate">{entry.name}</span>
+                                  <span className="font-medium text-slate-900">{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>行业分布</CardTitle>
+                        <CardDescription>统计投递记录中的行业字段。</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {industryChartData.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+                            暂无行业数据，可在投递记录中补充行业信息。
+                          </div>
+                        ) : (
+                          <>
+                            <div className="h-72 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={industryChartData} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                  <XAxis type="number" tickLine={false} axisLine={false} />
+                                  <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={88} />
+                                  <Tooltip />
+                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} fill="#0ea5e9" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {industryChartData.map((entry) => (
+                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                                  <span className="truncate">{entry.name}</span>
+                                  <span className="font-medium text-slate-900">{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>城市 / Base 分布</CardTitle>
+                        <CardDescription>统计投递记录中的 Base 字段。</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {locationChartData.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+                            暂无 Base 数据，可在投递记录中补充 Base 信息。
+                          </div>
+                        ) : (
+                          <>
+                            <div className="h-72 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={locationChartData} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                  <XAxis type="number" tickLine={false} axisLine={false} />
+                                  <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={88} />
+                                  <Tooltip />
+                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} fill="#10b981" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {locationChartData.map((entry) => (
+                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                                  <span className="truncate">{entry.name}</span>
+                                  <span className="font-medium text-slate-900">{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>简历版本使用情况</CardTitle>
+                        <CardDescription>统计每个简历版本被绑定的次数。</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {resumeVersionChartData.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500">
+                            暂无简历版本使用数据。
+                          </div>
+                        ) : (
+                          <>
+                            <div className="h-72 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={resumeVersionChartData} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                  <XAxis type="number" tickLine={false} axisLine={false} />
+                                  <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={88} />
+                                  <Tooltip />
+                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} fill="#6366f1" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {resumeVersionChartData.map((entry) => (
+                                <div key={entry.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                                  <span className="truncate">{entry.name}</span>
+                                  <span className="font-medium text-slate-900">{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               )}
             </>
@@ -1937,25 +2165,29 @@ export default function Home() {
             <>
               <PageHeader
                 title="数据设置"
-                subtitle="当前版本采用本地优先存储，适合 MVP 上线和早期用户试用。"
                 action={<Button onClick={exportData}><Download className="h-4 w-4" /> 导出备份</Button>}
               />
 
               <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
                 <Card>
                   <CardHeader>
-                    <CardTitle>上线前数据说明</CardTitle>
-                    <CardDescription>给真实用户使用时，数据安全边界需要说清楚。</CardDescription>
+                    <CardTitle>数据说明</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 text-sm leading-6 text-slate-600">
-                    <p>当前数据保存在用户自己的浏览器 localStorage 中，不上传服务器，不需要账号。</p>
-                    <p>优点是上线快、隐私边界清楚；限制是换设备或清缓存后无法自动同步。</p>
-                    <p>正式商业化前，建议接 Supabase 登录和数据库，实现多端同步与账户级数据隔离。</p>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="font-medium text-slate-900">当前数据</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        投递 {applications.length} 条 · 简历版本 {resumeVersions.length} 个 · 情绪记录 {emotionRecords.length} 条
-                      </p>
+                  <CardContent className="space-y-6 text-sm leading-7 text-slate-600">
+                    <p>当前数据保存在你的浏览器本地（localStorage），不会上传服务器，也不需要账号。</p>
+                    <div className="space-y-3">
+                      <p>这意味着：</p>
+                      <ul className="list-disc space-y-2 pl-5">
+                        <li>关闭网页后再次打开，同一浏览器中数据仍然存在</li>
+                        <li>如果更换设备 / 更换浏览器 / 清除缓存，数据将无法恢复</li>
+                      </ul>
+                    </div>
+                    <div className="space-y-3">
+                      <p>为了避免数据丢失，建议你定期进行备份：</p>
+                      <div className="space-y-1.5">
+                        <p>👉 使用右侧「导出 JSON」功能保存数据</p>
+                        <p>👉 在需要时可通过「导入数据」恢复</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
